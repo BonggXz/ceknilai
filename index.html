@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cek Nilai</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f1f5f9; padding: 2rem; color: #333; }
+    .container { max-width: 500px; margin: auto; background: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
+    h1 { text-align: center; margin-bottom: 1.5rem; }
+    input, select, button { width: 100%; padding: 0.7rem; margin-top: 10px; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem; }
+    button { background: #4a90e2; color: white; cursor: pointer; }
+    button:hover { background: #357bd8; }
+    .result { margin-top: 1.5rem; background: #f9fafb; padding: 1rem; border-radius: 6px; }
+    .error { color: red; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Cek Nilai</h1>
+    <input type="text" id="idSiswa" placeholder="Masukkan ID Siswa" />
+    <select id="mapel">
+      <option value="">Pilih Mapel</option>
+    </select>
+    <button onclick="cekNilai()">Lihat Nilai</button>
+
+    <div class="error" id="error"></div>
+    <div class="result" id="hasil"></div>
+  </div>
+
+  <script>
+    async function loadMapel() {
+      const mapelSelect = document.getElementById('mapel');
+      try {
+        const res = await fetch('https://cbtadmin.bimasoft.workers.dev/?cbtindex=49&_=/datatest');
+        const data = await res.json();
+        const mapels = data.mapel;
+
+        Object.keys(mapels).forEach(kode => {
+          const option = document.createElement('option');
+          option.value = kode;
+          option.textContent = mapels[kode].nama || kode;
+          mapelSelect.appendChild(option);
+        });
+      } catch (err) {
+        console.error('Gagal mengambil daftar mapel:', err);
+      }
+    }
+
+    async function cekNilai() {
+      const idSiswa = document.getElementById('idSiswa').value.trim();
+      const mapel = document.getElementById('mapel').value;
+      const errorDiv = document.getElementById('error');
+      const hasilDiv = document.getElementById('hasil');
+      errorDiv.textContent = '';
+      hasilDiv.innerHTML = '';
+
+      if (!idSiswa || !mapel) {
+        errorDiv.textContent = 'Silakan isi ID Siswa dan pilih mapel.';
+        return;
+      }
+
+      const url = `https://firestore.googleapis.com/v1/projects/cbt-00/databases/(default)/documents/49/datasiswa/datasiswa/${mapel}-${idSiswa}`;
+
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Data tidak ditemukan.');
+        const data = await res.json();
+        const nilai = data.fields.nilai?.integerValue || data.fields.nilai?.stringValue || 'Tidak ada';
+        const nama = data.fields.nama?.stringValue || 'Nama tidak tersedia';
+        const waktu = data.fields.waktuselesai?.stringValue || 'Belum selesai';
+
+        hasilDiv.innerHTML = `
+          <p><strong>Nama:</strong> ${nama}</p>
+          <p><strong>ID:</strong> ${idSiswa}</p>
+          <p><strong>Mapel:</strong> ${mapel}</p>
+          <p><strong>Nilai:</strong> ${nilai}</p>
+        `;
+      } catch (err) {
+        console.error(err);
+        errorDiv.textContent = 'Gagal mengambil data. Pastikan ID dan mapel benar.';
+      }
+    }
+
+    loadMapel();
+  </script>
+</body>
+</html>
